@@ -444,14 +444,20 @@ public class DerivativeUnitFactory extends UnitFactory {
             int tileX = tileX();
             int tileY = tileY();
             
-            // 根据建筑旋转方向计算区域起始坐标
             // 建筑背方是虚线框的对面
+            // 虚线框在建筑前方，所以背方是相反方向
             int dir = rotation;
             
-            // 计算区域起始坐标，确保14*14区域在建筑背方
-            // 这里简化处理，实际需要根据旋转方向计算
-            int startX = tileX - REGION_SIZE / 2;
-            int startY = tileY - REGION_SIZE / 2;
+            // 计算背方的偏移量（与虚线框相反方向）
+            // 虚线框偏移：tilesize * (areaSize + size)/2f
+            // 背方偏移：与虚线框相反方向，所以使用负的方向向量
+            float len = tilesize * (areaSize + size)/2f;
+            int offsetX = (int) (-Geometry.d4x(dir) * len / tilesize);
+            int offsetY = (int) (-Geometry.d4y(dir) * len / tilesize);
+            
+            // 计算14*14区域的起始坐标，确保区域在建筑背方
+            int startX = tileX + offsetX - REGION_SIZE / 2;
+            int startY = tileY + offsetY - REGION_SIZE / 2;
             
             return startX;
         }
@@ -462,9 +468,17 @@ public class DerivativeUnitFactory extends UnitFactory {
             int tileX = tileX();
             int tileY = tileY();
             
-            // 计算区域起始坐标
-            int startX = tileX - REGION_SIZE / 2;
-            int startY = tileY - REGION_SIZE / 2;
+            // 建筑背方是虚线框的对面
+            int dir = rotation;
+            
+            // 计算背方的偏移量
+            float len = tilesize * (areaSize + size)/2f;
+            int offsetX = (int) (-Geometry.d4x(dir) * len / tilesize);
+            int offsetY = (int) (-Geometry.d4y(dir) * len / tilesize);
+            
+            // 计算14*14区域的起始坐标
+            int startX = tileX + offsetX - REGION_SIZE / 2;
+            int startY = tileY + offsetY - REGION_SIZE / 2;
             
             return startY;
         }
