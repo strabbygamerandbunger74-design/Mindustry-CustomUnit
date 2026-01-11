@@ -314,8 +314,14 @@ public class DerivativeUnitFactory extends UnitFactory {
                                 Object config = tile.build.config();
                                 
                                 // 对于大小>1*1的建筑，使用其实际原点坐标
-                                int originX = worldX - (int) buildingType.offset.x;
-                                int originY = worldY - (int) buildingType.offset.y;
+                                // 计算建筑的左上角坐标（原点）
+                                int originX = worldX;
+                                int originY = worldY;
+                                if (buildingType.size > 1) {
+                                    // 寻找建筑的左上角原点
+                                    originX = worldX - (int)(worldX % buildingType.size);
+                                    originY = worldY - (int)(worldY % buildingType.size);
+                                }
                                 
                                 // 创建建筑计划，包含配置信息
                                 BuildPlan plan = new BuildPlan(originX, originY, rotation, buildingType, config);
@@ -365,8 +371,14 @@ public class DerivativeUnitFactory extends UnitFactory {
                             Object config = tile.build.config();
                             
                             // 对于大小>1*1的建筑，使用其实际原点坐标
-                            int originX = worldX - (int) buildingType.offset.x;
-                            int originY = worldY - (int) buildingType.offset.y;
+                            // 计算建筑的左上角坐标（原点）
+                            int originX = worldX;
+                            int originY = worldY;
+                            if (buildingType.size > 1) {
+                                // 寻找建筑的左上角原点
+                                originX = worldX - (int)(worldX % buildingType.size);
+                                originY = worldY - (int)(worldY % buildingType.size);
+                            }
                             
                             // 创建建筑计划，包含配置信息
                             BuildPlan plan = new BuildPlan(originX, originY, rotation, buildingType, config);
