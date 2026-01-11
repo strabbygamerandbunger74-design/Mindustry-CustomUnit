@@ -311,8 +311,14 @@ public class DerivativeUnitFactory extends UnitFactory {
                             if (tile.build != null) {
                                 int rotation = tile.build.rotation;
                                 Block buildingType = tile.block();
-                                // 创建建筑计划
-                                BuildPlan plan = new BuildPlan(worldX, worldY, rotation, buildingType);
+                                Object config = tile.build.config();
+                                
+                                // 对于大小>1*1的建筑，使用其实际原点坐标
+                                int originX = worldX - (int) buildingType.offset.x;
+                                int originY = worldY - (int) buildingType.offset.y;
+                                
+                                // 创建建筑计划，包含配置信息
+                                BuildPlan plan = new BuildPlan(originX, originY, rotation, buildingType, config);
                                 mapStateA.add(plan);
                             } 
                             // 保存墙（如果有）
@@ -322,7 +328,14 @@ public class DerivativeUnitFactory extends UnitFactory {
                                 BuildPlan plan = new BuildPlan(worldX, worldY, 0, wallType);
                                 mapStateA.add(plan);
                             }
-                            // 地板不需要保存，因为我们不会修改它
+                            // 保存地板
+                            Floor floorType = tile.floor();
+                            // 创建地板计划（使用特殊标记，因为BuildPlan主要用于建筑）
+                            // 我们将使用null作为block，表示这是一个地板计划
+                            BuildPlan floorPlan = new BuildPlan(worldX, worldY, 0, null);
+                            // 使用floorType作为config，方便识别
+                            floorPlan.config = floorType;
+                            mapStateA.add(floorPlan);
                         }
                     }
                 }
@@ -349,8 +362,14 @@ public class DerivativeUnitFactory extends UnitFactory {
                             // 保存建筑状态
                             Block buildingType = tile.block();
                             int rotation = tile.build.rotation;
-                            // 创建建筑计划
-                            BuildPlan plan = new BuildPlan(worldX, worldY, rotation, buildingType);
+                            Object config = tile.build.config();
+                            
+                            // 对于大小>1*1的建筑，使用其实际原点坐标
+                            int originX = worldX - (int) buildingType.offset.x;
+                            int originY = worldY - (int) buildingType.offset.y;
+                            
+                            // 创建建筑计划，包含配置信息
+                            BuildPlan plan = new BuildPlan(originX, originY, rotation, buildingType, config);
                             mapStateB.add(plan);
                         }
                     }
@@ -428,16 +447,17 @@ public class DerivativeUnitFactory extends UnitFactory {
             
             // 遍历所有保存的建筑计划
             for (BuildPlan plan : mapStateB) {
-                if (plan != null) {
+                if (plan != null && plan.block != null) {
                     // 获取建筑类型、位置和旋转角度
                     Block buildingType = plan.block;
                     int worldX = plan.x;
                     int worldY = plan.y;
                     int rotation = plan.rotation;
+                    Object config = plan.config;
                     
                     // 获取对应位置的Tile对象
                     Tile tile = world.tile(worldX, worldY);
-                    if (tile != null && buildingType != null) {
+                    if (tile != null) {
                         // 清除当前位置的建筑（如果有）
                         if (tile.build != null) {
                             tile.remove();
@@ -445,6 +465,11 @@ public class DerivativeUnitFactory extends UnitFactory {
                         
                         // 创建新建筑
                         tile.setBlock(buildingType, team, rotation);
+                        
+                        // 应用配置信息
+                        if (config != null && tile.build != null) {
+                            tile.build.configure(config);
+                        }
                     }
                 }
             }
@@ -454,9 +479,24 @@ public class DerivativeUnitFactory extends UnitFactory {
         private void restoreStateA() {
             if (mapStateA == null) return;
             
-            // 遍历所有建筑计划
+            // 首先处理地板计划，因为它们是基础
             for (BuildPlan plan : mapStateA) {
-                if (plan != null) {
+                if (plan != null && plan.block == null && plan.config instanceof Floor) {
+                    // 这是一个地板计划
+                    int worldX = plan.x;
+                    int worldY = plan.y;
+                    Tile tile = world.tile(worldX, worldY);
+                    if (tile != null) {
+                        Floor floorType = (Floor) plan.config;
+                        // 还原地板
+                        tile.setFloor(floorType);
+                    }
+                }
+            }
+            
+            // 然后处理墙和建筑计划
+            for (BuildPlan plan : mapStateA) {
+                if (plan != null && plan.block != null) {
                     // 获取计划对应的Tile对象
                     int worldX = plan.x;
                     int worldY = plan.y;
@@ -470,10 +510,13 @@ public class DerivativeUnitFactory extends UnitFactory {
                             tile.setAir();
                         }
                         
-                        // 根据计划设置新的建筑或墙
-                        if (plan.block != null) {
-                            // 设置新的建筑或墙
-                            tile.setBlock(plan.block, team, plan.rotation);
+                        // 设置新的建筑或墙
+                        tile.setBlock(plan.block, team, plan.rotation);
+                        
+                        // 应用配置信息
+                        if (plan.config != null && tile.build != null) {
+                            // 应用建筑配置
+                            tile.build.configure(plan.config);
                         }
                     }
                 }
