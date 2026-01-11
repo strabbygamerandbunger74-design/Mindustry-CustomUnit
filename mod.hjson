@@ -1,0 +1,24 @@
+
+displayName: "Custom Unit Mod - 自定义单位模组"
+
+#the internal name of your mod
+name: "custom-unit-mod"
+
+#your name
+author: "meesst"
+
+#the fully qualified main class of the mod
+main: "customunit.CustomUnitMod"
+
+#the mod description as seen in the mod dialog
+description: "A mod that allows players to create custom units.\n一个允许玩家创建自定义单位的模组"
+
+
+#the mod version
+version: 1.0
+
+#the minimum game build required to run this mod
+minGameVersion: 151.1
+
+#this is a java mod
+java: true

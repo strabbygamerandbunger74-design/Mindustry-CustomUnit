@@ -1,39 +1,22 @@
-# Ignore Gradle project-specific cache directory
-.gradle
+# Default ignored files
+/shelf/
+/workspace.xml
+# Datasource local storage ignored files
+/dataSources/
+/dataSources.local.xml
+# Editor-based HTTP Client requests
+/httpRequests/
 
-# Ignore Gradle build output directory
-build
-out
+# Gradle
+.gradle/
+build/
 
-# Ignore IDE files
-.idea
-*.iml
-*.ipr
-*.iws
-*.swp
-*.swo
-*~
-
-# Ignore OS generated files
+# OS Files
 .DS_Store
 Thumbs.db
 
-# Ignore temporary files
-temp
-*.tmp
-*.temp
+# Java
+*.class
 
-# Ignore log files
-logs
-*.log
-
-# Ignore local configuration files
-local.properties
-*.local
-
-# Ignore Android SDK files (if any)
-android-sdk
-
-# Ignore Jar files (except the final mod jar)
-*.jar
-!*.mod.jar
+# Testing
+*.orig
