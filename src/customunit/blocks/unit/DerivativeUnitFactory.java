@@ -11,6 +11,8 @@ import arc.math.geom.Geometry;
 import arc.math.geom.Rect;
 import arc.math.geom.Vec2;
 import arc.struct.EnumSet;
+import arc.struct.Seq;
+import arc.struct.StringMap;
 import arc.util.Tmp;
 import mindustry.Vars;
 import mindustry.content.Blocks;
@@ -104,9 +106,9 @@ public class DerivativeUnitFactory extends UnitFactory {
         private final Object[] objects = new Object[4];
         
         // 变量a：保存完整地图状态（建筑、墙、地板）
-        private java.util.List<BuildPlan> mapStateA;
+        private Schematic mapStateA;
         // 变量b：保存当前建筑状态
-        private java.util.List<BuildPlan> mapStateB;
+        private Schematic mapStateB;
         
         // 开关状态
         private boolean isActive = false;
@@ -325,7 +327,7 @@ public class DerivativeUnitFactory extends UnitFactory {
                                 // 计算相对于区域左上角的本地坐标
                                 int localX = i;
                                 int localY = j;
-                                tiles.add(new Schematic.Stile(floorType.asFloor(), localX, localY, null, 0));
+                                tiles.add(new Schematic.Stile(floorType.asFloor(), localX, localY, null, (byte)0));
                             }
                         }
                     }
