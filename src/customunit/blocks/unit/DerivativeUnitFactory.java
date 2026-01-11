@@ -356,14 +356,14 @@ public class DerivativeUnitFactory extends UnitFactory {
                     if (worldX >= 0 && worldX < world.width() && worldY >= 0 && worldY < world.height()) {
                         Tile tile = world.tile(worldX, worldY);
                         if (tile != null) {
-                            // 清除瓦片内容（这里简化处理，实际需要更复杂的逻辑）
+                            // 清除瓦片内容（使用内置方法避免空指针）
                             // 清除建筑
                             if (tile.build != null) {
                                 tile.remove();
                             }
-                            // 清除墙体（墙是特殊的Block，使用setBlock(null)移除）
+                            // 清除墙体（使用setAir()方法避免空指针异常）
                             if (tile.block() instanceof StaticWall) {
-                                tile.setBlock(null);
+                                tile.setAir();
                             }
                             // 清除地板（这里不清除地板，保持原始状态）
                         }
@@ -428,8 +428,9 @@ public class DerivativeUnitFactory extends UnitFactory {
                             Block originalBlock = mapStateA.tiles[i][j].block();
                             if (originalBlock instanceof StaticWall) {
                                 tile.setBlock(originalBlock);
-                            } else {
-                                tile.setBlock(null);
+                            } else if (tile.block() instanceof StaticWall) {
+                                // 只有当当前是墙时才清除，使用setAir()避免空指针
+                                tile.setAir();
                             }
                             // 还原建筑（这里简化处理）
                         }
