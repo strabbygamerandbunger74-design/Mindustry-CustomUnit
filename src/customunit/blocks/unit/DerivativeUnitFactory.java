@@ -25,6 +25,7 @@ import mindustry.graphics.Drawf;
 import mindustry.graphics.Layer;
 import mindustry.graphics.Pal;
 import mindustry.world.Tile;
+import mindustry.world.Block;
 import mindustry.world.blocks.payloads.UnitPayload;
 import mindustry.world.blocks.units.UnitFactory;
 import mindustry.world.blocks.environment.Floor;
@@ -338,7 +339,7 @@ public class DerivativeUnitFactory extends UnitFactory {
         // 保存当前建筑状态到变量b
         private void saveStateB() {
             // 保存当前建筑瓦片
-            mapStateB = new BuildingState(tile());
+            mapStateB = new BuildingState(this.tile);
         }
         
         // 清除14*14区域
@@ -360,9 +361,9 @@ public class DerivativeUnitFactory extends UnitFactory {
                             if (tile.build != null) {
                                 tile.remove();
                             }
-                            // 清除墙体
-                            if (tile.wall() != null) {
-                                tile.setWall(null);
+                            // 清除墙体（墙是特殊的Block，使用setBlock(null)移除）
+                            if (tile.block() instanceof StaticWall) {
+                                tile.setBlock(null);
                             }
                             // 清除地板（这里不清除地板，保持原始状态）
                         }
@@ -387,7 +388,7 @@ public class DerivativeUnitFactory extends UnitFactory {
                         if (tile != null) {
                             // 绘制边框（暗金属墙）
                             if (i == 0 || i == REGION_SIZE - 1 || j == 0 || j == REGION_SIZE - 1) {
-                                tile.setWall((StaticWall) Blocks.darkMetal);
+                                tile.setBlock(Blocks.darkMetal);
                             } else {
                                 // 绘制中间（暗面板3）
                                 tile.setFloor((Floor) Blocks.darkPanel3);
@@ -423,8 +424,13 @@ public class DerivativeUnitFactory extends UnitFactory {
                             // 还原瓦片状态（这里简化处理，实际需要更详细的状态还原）
                             // 还原地板
                             tile.setFloor(mapStateA.tiles[i][j].floor());
-                            // 还原墙体
-                            tile.setWall(mapStateA.tiles[i][j].wall());
+                            // 还原墙体（墙是特殊的Block，使用setBlock还原）
+                            Block originalBlock = mapStateA.tiles[i][j].block();
+                            if (originalBlock instanceof StaticWall) {
+                                tile.setBlock(originalBlock);
+                            } else {
+                                tile.setBlock(null);
+                            }
                             // 还原建筑（这里简化处理）
                         }
                     }
