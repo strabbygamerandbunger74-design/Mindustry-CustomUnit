@@ -313,15 +313,12 @@ public class DerivativeUnitFactory extends UnitFactory {
                                 Block buildingType = tile.block();
                                 Object config = tile.build.config();
                                 
-                                // 对于大小>1*1的建筑，使用其实际原点坐标
-                                // 计算建筑的左上角坐标（原点）
-                                int originX = worldX;
-                                int originY = worldY;
-                                if (buildingType.size > 1) {
-                                    // 寻找建筑的左上角原点
-                                    originX = worldX - (int)(worldX % buildingType.size);
-                                    originY = worldY - (int)(worldY % buildingType.size);
-                                }
+                                // 对于任意大小的建筑，使用其中心瓦片来计算原点坐标
+                                int centerX = tile.centerX();
+                                int centerY = tile.centerY();
+                                int offset = (buildingType.size - 1) / 2;
+                                int originX = centerX - offset;
+                                int originY = centerY - offset;
                                 
                                 // 创建建筑计划，包含配置信息
                                 BuildPlan plan = new BuildPlan(originX, originY, rotation, buildingType, config);
@@ -370,15 +367,12 @@ public class DerivativeUnitFactory extends UnitFactory {
                             int rotation = tile.build.rotation;
                             Object config = tile.build.config();
                             
-                            // 对于大小>1*1的建筑，使用其实际原点坐标
-                            // 计算建筑的左上角坐标（原点）
-                            int originX = worldX;
-                            int originY = worldY;
-                            if (buildingType.size > 1) {
-                                // 寻找建筑的左上角原点
-                                originX = worldX - (int)(worldX % buildingType.size);
-                                originY = worldY - (int)(worldY % buildingType.size);
-                            }
+                            // 对于任意大小的建筑，使用其中心瓦片来计算原点坐标
+                            int centerX = tile.centerX();
+                            int centerY = tile.centerY();
+                            int offset = (buildingType.size - 1) / 2;
+                            int originX = centerX - offset;
+                            int originY = centerY - offset;
                             
                             // 创建建筑计划，包含配置信息
                             BuildPlan plan = new BuildPlan(originX, originY, rotation, buildingType, config);
