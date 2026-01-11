@@ -46,24 +46,71 @@ public class DerivativeUnitFactory extends UnitFactory {
     // 变量a：保存完整地图状态（建筑、墙、地板）
     // 变量b：保存当前建筑状态
     
+    // 保存单个瓦片的详细状态
+    public static class TileState {
+        public Floor floor;
+        public Block wall;
+        public Block building;
+        public int rotation;
+        
+        public TileState() {
+            this.floor = null;
+            this.wall = null;
+            this.building = null;
+            this.rotation = 0;
+        }
+        
+        public TileState(Floor floor, Block wall, Block building, int rotation) {
+            this.floor = floor;
+            this.wall = wall;
+            this.building = building;
+            this.rotation = rotation;
+        }
+    }
+    
+    // 保存完整地图状态（建筑、墙、地板）
     public static class MapState {
-        public Tile[][] tiles;
+        public TileState[][] tileStates;
         public int width;
         public int height;
         
         public MapState(int width, int height) {
             this.width = width;
             this.height = height;
-            this.tiles = new Tile[width][height];
+            this.tileStates = new TileState[width][height];
+            for (int i = 0; i < width; i++) {
+                for (int j = 0; j < height; j++) {
+                    this.tileStates[i][j] = new TileState();
+                }
+            }
         }
     }
     
+    // 保存建筑状态
     public static class BuildingState {
-        // 建筑状态相关属性
-        public Tile buildingTile;
+        // 保存区域内所有建筑的状态
+        public static class SingleBuildingState {
+            public Block buildingType;
+            public int x;
+            public int y;
+            public int rotation;
+            
+            public SingleBuildingState(Block buildingType, int x, int y, int rotation) {
+                this.buildingType = buildingType;
+                this.x = x;
+                this.y = y;
+                this.rotation = rotation;
+            }
+        }
         
-        public BuildingState(Tile buildingTile) {
-            this.buildingTile = buildingTile;
+        public java.util.List<SingleBuildingState> buildingStates;
+        
+        public BuildingState() {
+            this.buildingStates = new java.util.ArrayList<>();
+        }
+        
+        public void addBuilding(Block buildingType, int x, int y, int rotation) {
+            this.buildingStates.add(new SingleBuildingState(buildingType, x, y, rotation));
         }
     }
 
@@ -328,9 +375,18 @@ public class DerivativeUnitFactory extends UnitFactory {
                     if (worldX >= 0 && worldX < world.width() && worldY >= 0 && worldY < world.height()) {
                         Tile tile = world.tile(worldX, worldY);
                         if (tile != null) {
-                            // 这里只保存瓦片的引用，实际应用中需要更详细的状态保存
-                            mapStateA.tiles[i][j] = tile;
+                            // 保存每个瓦片的详细状态
+                            Floor floor = tile.floor();
+                            Block wall = tile.block() instanceof StaticWall ? tile.block() : null;
+                            Block building = tile.build != null ? tile.block() : null;
+                            int rotation = tile.rotation();
+                            
+                            mapStateA.tileStates[i][j] = new TileState(floor, wall, building, rotation);
+                        } else {
+                            mapStateA.tileStates[i][j] = new TileState();
                         }
+                    } else {
+                        mapStateA.tileStates[i][j] = new TileState();
                     }
                 }
             }
@@ -338,8 +394,29 @@ public class DerivativeUnitFactory extends UnitFactory {
         
         // 保存当前建筑状态到变量b
         private void saveStateB() {
-            // 保存当前建筑瓦片
-            mapStateB = new BuildingState(this.tile);
+            // 创建建筑状态对象
+            mapStateB = new BuildingState();
+            
+            // 获取14*14区域的起始坐标
+            int startX = getRegionStartX();
+            int startY = getRegionStartY();
+            
+            // 保存区域内所有建筑的状态
+            for (int i = 0; i < REGION_SIZE; i++) {
+                for (int j = 0; j < REGION_SIZE; j++) {
+                    int worldX = startX + i;
+                    int worldY = startY + j;
+                    if (worldX >= 0 && worldX < world.width() && worldY >= 0 && worldY < world.height()) {
+                        Tile tile = world.tile(worldX, worldY);
+                        if (tile != null && tile.build != null) {
+                            // 保存建筑状态
+                            Block buildingType = tile.block();
+                            int rotation = tile.rotation();
+                            mapStateB.addBuilding(buildingType, worldX, worldY, rotation);
+                        }
+                    }
+                }
+            }
         }
         
         // 清除14*14区域
@@ -357,15 +434,22 @@ public class DerivativeUnitFactory extends UnitFactory {
                         Tile tile = world.tile(worldX, worldY);
                         if (tile != null) {
                             // 清除瓦片内容（使用内置方法避免空指针）
-                            // 清除建筑
+                            // 1. 清除建筑（如果有）
                             if (tile.build != null) {
                                 tile.remove();
                             }
-                            // 清除墙体（使用setAir()方法避免空指针异常）
+                            
+                            // 2. 清除墙体（如果有）
                             if (tile.block() instanceof StaticWall) {
                                 tile.setAir();
                             }
-                            // 清除地板（这里不清除地板，保持原始状态）
+                            
+                            // 3. 清除其他非地板方块（如果有）
+                            if (tile.block() != null && !(tile.block() instanceof Floor)) {
+                                tile.setAir();
+                            }
+                            
+                            // 4. 地板保持原始状态，不清除
                         }
                     }
                 }
@@ -401,8 +485,30 @@ public class DerivativeUnitFactory extends UnitFactory {
         
         // 从变量b中绘制建筑
         private void drawBuildingFromStateB() {
-            // 这里简化处理，实际需要更复杂的逻辑
-            // 绘制mapStateB中的建筑
+            if (mapStateB == null) return;
+            
+            // 遍历所有保存的建筑状态
+            for (BuildingState.SingleBuildingState buildingState : mapStateB.buildingStates) {
+                if (buildingState != null) {
+                    // 获取建筑类型、位置和旋转角度
+                    Block buildingType = buildingState.buildingType;
+                    int worldX = buildingState.x;
+                    int worldY = buildingState.y;
+                    int rotation = buildingState.rotation;
+                    
+                    // 获取对应位置的Tile对象
+                    Tile tile = world.tile(worldX, worldY);
+                    if (tile != null) {
+                        // 清除当前位置的建筑（如果有）
+                        if (tile.build != null) {
+                            tile.remove();
+                        }
+                        
+                        // 创建新建筑
+                        tile.setBlock(buildingType, team, rotation);
+                    }
+                }
+            }
         }
         
         // 还原变量a的状态
@@ -420,19 +526,35 @@ public class DerivativeUnitFactory extends UnitFactory {
                     int worldY = startY + j;
                     if (worldX >= 0 && worldX < world.width() && worldY >= 0 && worldY < world.height()) {
                         Tile tile = world.tile(worldX, worldY);
-                        if (tile != null && mapStateA.tiles[i][j] != null) {
-                            // 还原瓦片状态（这里简化处理，实际需要更详细的状态还原）
-                            // 还原地板
-                            tile.setFloor(mapStateA.tiles[i][j].floor());
-                            // 还原墙体（墙是特殊的Block，使用setBlock还原）
-                            Block originalBlock = mapStateA.tiles[i][j].block();
-                            if (originalBlock instanceof StaticWall) {
-                                tile.setBlock(originalBlock);
-                            } else if (tile.block() instanceof StaticWall) {
-                                // 只有当当前是墙时才清除，使用setAir()避免空指针
+                        TileState state = mapStateA.tileStates[i][j];
+                        if (tile != null && state != null) {
+                            // 先清除当前瓦片的内容
+                            if (tile.build != null) {
+                                tile.remove();
+                            }
+                            if (tile.block() instanceof StaticWall) {
                                 tile.setAir();
                             }
-                            // 还原建筑（这里简化处理）
+                            
+                            // 还原地板
+                            if (state.floor != null) {
+                                tile.setFloor(state.floor);
+                            }
+                            
+                            // 还原墙体
+                            if (state.wall != null) {
+                                tile.setBlock(state.wall);
+                            }
+                            
+                            // 还原建筑
+                            if (state.building != null) {
+                                // 清除当前建筑（如果有）
+                                if (tile.build != null) {
+                                    tile.remove();
+                                }
+                                // 设置新建筑
+                                tile.setBlock(state.building, team, state.rotation);
+                            }
                         }
                     }
                 }
