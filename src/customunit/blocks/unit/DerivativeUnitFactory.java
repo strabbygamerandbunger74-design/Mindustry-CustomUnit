@@ -42,7 +42,7 @@ public class DerivativeUnitFactory extends UnitFactory {
     public DerivativeUnitFactory(String name) {
         super(name);
 
-        ambientSound = Sounds.bioLoop;
+        ambientSound = Sounds.techloop;
         ambientSoundVolume = 0.1f;
         flags = EnumSet.of(BlockFlag.factory);
     }
@@ -191,7 +191,7 @@ public class DerivativeUnitFactory extends UnitFactory {
                             aboveEffect.at(end.x, end.y, 2, Pal.accent);
                             if(!state.isPaused() && Mathf.chance(0.01f)) {
                                 Fx.hitLancer.at(end);
-                                Sounds.spark.at(end.x, end.y, 0.5f, 0.3f);
+                                Sounds.shockBlast.at(end.x, end.y, 0.5f, 0.3f);
                             }
                         }
                         Draw.color(team.color);

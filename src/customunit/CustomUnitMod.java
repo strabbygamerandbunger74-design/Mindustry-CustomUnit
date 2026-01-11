@@ -9,7 +9,7 @@ import mindustry.gen.*;
 import mindustry.mod.*;
 import mindustry.ui.dialogs.*;
 import mindustry.world.blocks.units.UnitFactory;
-import mindustry.world.meta.Category;
+import mindustry.type.Category;
 import customunit.blocks.unit.DerivativeUnitFactory;
 
 public class CustomUnitMod extends Mod{
@@ -24,7 +24,7 @@ public class CustomUnitMod extends Mod{
         
         // 注册"量子.虚幻"建筑
         new DerivativeUnitFactory("finalF"){{
-            requirements(Category.units, with(Items.silicon, 6000, Items.thorium, 4000, Items.phaseFabric, 3000, Items.surgeAlloy, 3000));
+            requirements(Category.units, ItemStack.with(Items.silicon, 6000, Items.thorium, 4000, Items.phaseFabric, 3000, Items.surgeAlloy, 3000));
             size = 5;
             consumePower(40);
             alwaysUnlocked = true;
