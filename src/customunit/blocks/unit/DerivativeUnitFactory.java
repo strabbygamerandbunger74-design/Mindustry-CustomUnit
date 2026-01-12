@@ -551,9 +551,9 @@ public class DerivativeUnitFactory extends UnitFactory {
             for (Schematic.Stile stile : mapStateB.tiles) {
                 // 计算建筑的中心偏移量
                 int offset = (stile.block.size - 1) / 2;
-                // 计算实际世界坐标（将中心坐标转换为左上角坐标）
-                int worldX = startX + stile.x + offset;
-                int worldY = startY + stile.y + offset;
+                // 直接使用中心坐标，因为我们在保存时已经将左上角坐标转换为了中心坐标
+                int worldX = startX + stile.x;
+                int worldY = startY + stile.y;
                 
                 log("DrawBuildingFromStateB - Drawing building: " + stile.block.name + 
                     " from local: " + stile.x + "," + stile.y + 
@@ -602,9 +602,9 @@ public class DerivativeUnitFactory extends UnitFactory {
             for (Schematic.Stile stile : mapStateA.tiles) {
                 // 计算建筑的中心偏移量
                 int offset = (stile.block.size - 1) / 2;
-                // 计算实际世界坐标（将中心坐标转换为左上角坐标）
-                int worldX = startX + stile.x + offset;
-                int worldY = startY + stile.y + offset;
+                // 直接使用中心坐标，因为我们在保存时已经将左上角坐标转换为了中心坐标
+                int worldX = startX + stile.x;
+                int worldY = startY + stile.y;
                 
                 log("RestoreStateA - Restoring building: " + stile.block.name + 
                     " from local: " + stile.x + "," + stile.y + 
