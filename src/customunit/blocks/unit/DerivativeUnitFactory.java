@@ -355,38 +355,15 @@ public class DerivativeUnitFactory extends UnitFactory {
             
             log("CaptureState - Start: (" + startX + ", " + startY + "), End: (" + endX + ", " + endY + ")");
             
-            // 手动捕获所有方块，包括地板、墙和建筑
-            Seq<Schematic.Stile> tiles = new Seq<>();
+            // 使用游戏内置方法创建蓝图，这会自动处理所有建筑的捕获
+            Schematic schematic = schematics.create(startX, startY, endX, endY);
             
-            for (int cx = startX; cx <= endX; cx++) {
-                for (int cy = startY; cy <= endY; cy++) {
-                    Tile tile = world.tile(cx, cy);
-                    if (tile != null) {
-                        int relX = cx - startX;
-                        int relY = cy - startY;
-                        
-                        // 1. 捕获地板
-                        if (tile.floor() != null) {
-                            tiles.add(new Schematic.Stile(tile.floor(), relX, relY, null, (byte)0));
-                            log("CaptureState - Saved floor: " + tile.floor().name + " at (" + relX + ", " + relY + ")");
-                        }
-                        
-                        // 2. 捕获墙或建筑
-                        Block block = tile.block();
-                        if (block != null && block != Blocks.air) {
-                            int rotation = tile.build != null ? tile.build.rotation : 0;
-                            Object config = tile.build != null ? tile.build.config() : null;
-                            tiles.add(new Schematic.Stile(block, relX, relY, config, (byte)rotation));
-                            log("CaptureState - Saved block: " + block.name + " at (" + relX + ", " + relY + ")");
-                        }
-                    }
-                }
+            log("CaptureState - Total blocks saved: " + schematic.tiles.size);
+            
+            // 记录蓝图中每个瓦片的原始坐标，用于调试
+            for (Schematic.Stile stile : schematic.tiles) {
+                log("CaptureState - Tile in blueprint: " + stile.block.name + " at (" + stile.x + ", " + stile.y + ")");
             }
-            
-            // 创建自定义蓝图，包含所有捕获的瓦片
-            Schematic schematic = new Schematic(tiles, new StringMap(), REGION_SIZE, REGION_SIZE);
-            
-            log("CaptureState - Total tiles saved: " + schematic.tiles.size);
             
             return schematic;
         }
@@ -481,42 +458,14 @@ public class DerivativeUnitFactory extends UnitFactory {
             
             log("PlaceSchematic - Using origin: (" + originX + ", " + originY + ")");
             
-            // 将瓦片分为地板和其他方块两类
-            Seq<Schematic.Stile> floors = new Seq<>();
-            Seq<Schematic.Stile> blocks = new Seq<>();
-            
             for (Schematic.Stile stile : schematic.tiles) {
-                if (stile.block instanceof Floor) {
-                    floors.add(stile);
-                } else {
-                    blocks.add(stile);
-                }
-            }
-            
-            log("PlaceSchematic - Floors to place: " + floors.size + ", Blocks to place: " + blocks.size);
-            
-            // 1. 先放置所有地板
-            for (Schematic.Stile stile : floors) {
+                // 计算世界坐标：区域起始坐标 + 蓝图瓦片偏移量
                 int worldX = originX + stile.x;
                 int worldY = originY + stile.y;
                 
                 Tile tile = world.tile(worldX, worldY);
                 if (tile != null) {
-                    // 放置地板
-                    tile.setFloor((Floor)stile.block);
-                    log("PlaceSchematic - Set floor: " + stile.block.name + 
-                        " at (" + worldX + ", " + worldY + ")");
-                }
-            }
-            
-            // 2. 然后放置所有墙或建筑
-            for (Schematic.Stile stile : blocks) {
-                int worldX = originX + stile.x;
-                int worldY = originY + stile.y;
-                
-                Tile tile = world.tile(worldX, worldY);
-                if (tile != null) {
-                    // 清除目标位置的现有建筑（如果需要）
+                    // 清除目标位置的现有建筑
                     Seq<Tile> linked = new Seq<>();
                     tile.getLinkedTilesAs(stile.block, linked);
                     
@@ -526,11 +475,19 @@ public class DerivativeUnitFactory extends UnitFactory {
                         }
                     }
                     
-                    // 放置新建筑或墙
-                    tile.setBlock(stile.block, team, stile.rotation);
-                    log("PlaceSchematic - Set block: " + stile.block.name + 
-                        " at (" + worldX + ", " + worldY + ")" +
-                        " Rotation: " + stile.rotation);
+                    // 放置新建筑
+                    if (stile.block instanceof Floor) {
+                        // 如果是地板，使用setFloor()方法
+                        tile.setFloor((Floor)stile.block);
+                        log("PlaceSchematic - Set floor: " + stile.block.name + 
+                            " at (" + worldX + ", " + worldY + ")");
+                    } else {
+                        // 否则使用setBlock()方法
+                        tile.setBlock(stile.block, team, stile.rotation);
+                        log("PlaceSchematic - Set block: " + stile.block.name + 
+                            " at (" + worldX + ", " + worldY + ")" +
+                            " Rotation: " + stile.rotation);
+                    }
                     
                     // 应用配置
                     if (stile.config != null && tile.build != null) {
