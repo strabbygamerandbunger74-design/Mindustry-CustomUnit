@@ -429,9 +429,9 @@ public class DerivativeUnitFactory extends UnitFactory {
                                 // 边框：使用允许放置建筑的墙
                                 block = Blocks.darkMetal;
                             } else {
-                                // 中间：使用允许放置建筑的面板
-                                // 使用普通地板代替暗面板3，确保允许放置建筑
-                                block = Blocks.plasticFloor;
+                                // 中间：使用允许放置建筑的地板
+                                // 使用metalFloor，确保允许放置建筑
+                                block = Blocks.metalFloor;
                             }
                             
                             // 放置方块
