@@ -366,23 +366,18 @@ public class DerivativeUnitFactory extends UnitFactory {
                         int relY = cy - startY;
                         
                         // 1. 捕获地板
-                        if (tile.floor() != null && tile.floor() != Blocks.air) {
+                        if (tile.floor() != null) {
                             tiles.add(new Schematic.Stile(tile.floor(), relX, relY, null, (byte)0));
                             log("CaptureState - Saved floor: " + tile.floor().name + " at (" + relX + ", " + relY + ")");
                         }
                         
-                        // 2. 捕获墙
-                        if (tile.wall() != null && tile.wall() != Blocks.air) {
-                            tiles.add(new Schematic.Stile(tile.wall(), relX, relY, null, (byte)0));
-                            log("CaptureState - Saved wall: " + tile.wall().name + " at (" + relX + ", " + relY + ")");
-                        }
-                        
-                        // 3. 捕获建筑
+                        // 2. 捕获墙或建筑
                         Block block = tile.block();
                         if (block != null && block != Blocks.air) {
+                            int rotation = tile.build != null ? tile.build.rotation : 0;
                             Object config = tile.build != null ? tile.build.config() : null;
-                            tiles.add(new Schematic.Stile(block, relX, relY, config, (byte)tile.rotation()));
-                            log("CaptureState - Saved building: " + block.name + " at (" + relX + ", " + relY + ")");
+                            tiles.add(new Schematic.Stile(block, relX, relY, config, (byte)rotation));
+                            log("CaptureState - Saved block: " + block.name + " at (" + relX + ", " + relY + ")");
                         }
                     }
                 }
@@ -486,25 +481,19 @@ public class DerivativeUnitFactory extends UnitFactory {
             
             log("PlaceSchematic - Using origin: (" + originX + ", " + originY + ")");
             
-            // 将瓦片分为地板、墙、建筑三类
+            // 将瓦片分为地板和其他方块两类
             Seq<Schematic.Stile> floors = new Seq<>();
-            Seq<Schematic.Stile> walls = new Seq<>();
-            Seq<Schematic.Stile> buildings = new Seq<>();
+            Seq<Schematic.Stile> blocks = new Seq<>();
             
             for (Schematic.Stile stile : schematic.tiles) {
                 if (stile.block instanceof Floor) {
                     floors.add(stile);
-                } else if (stile.block.isWall()) {
-                    walls.add(stile);
-                } else if (stile.block.hasBuilding()) {
-                    buildings.add(stile);
                 } else {
-                    // 其他类型的方块（如装饰物）
-                    walls.add(stile);
+                    blocks.add(stile);
                 }
             }
             
-            log("PlaceSchematic - Floors to place: " + floors.size + ", Walls to place: " + walls.size + ", Buildings to place: " + buildings.size);
+            log("PlaceSchematic - Floors to place: " + floors.size + ", Blocks to place: " + blocks.size);
             
             // 1. 先放置所有地板
             for (Schematic.Stile stile : floors) {
@@ -520,22 +509,8 @@ public class DerivativeUnitFactory extends UnitFactory {
                 }
             }
             
-            // 2. 然后放置所有墙
-            for (Schematic.Stile stile : walls) {
-                int worldX = originX + stile.x;
-                int worldY = originY + stile.y;
-                
-                Tile tile = world.tile(worldX, worldY);
-                if (tile != null) {
-                    // 放置墙
-                    tile.setWall(stile.block);
-                    log("PlaceSchematic - Set wall: " + stile.block.name + 
-                        " at (" + worldX + ", " + worldY + ")");
-                }
-            }
-            
-            // 3. 最后放置所有建筑
-            for (Schematic.Stile stile : buildings) {
+            // 2. 然后放置所有墙或建筑
+            for (Schematic.Stile stile : blocks) {
                 int worldX = originX + stile.x;
                 int worldY = originY + stile.y;
                 
@@ -551,9 +526,9 @@ public class DerivativeUnitFactory extends UnitFactory {
                         }
                     }
                     
-                    // 放置新建筑
+                    // 放置新建筑或墙
                     tile.setBlock(stile.block, team, stile.rotation);
-                    log("PlaceSchematic - Set building: " + stile.block.name + 
+                    log("PlaceSchematic - Set block: " + stile.block.name + 
                         " at (" + worldX + ", " + worldY + ")" +
                         " Rotation: " + stile.rotation);
                     
