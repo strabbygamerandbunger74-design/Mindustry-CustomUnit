@@ -106,6 +106,11 @@ public class DerivativeUnitFactory extends UnitFactory {
         // 变量b：保存当前建筑状态，在关闭方法中保存
         private Schematic mapStateB;
         
+        // 蓝图A的基点坐标（世界坐标），用于记录和还原建筑位置
+        private int stateAOriginX, stateAOriginY;
+        // 蓝图B的基点坐标（世界坐标），用于记录和还原建筑位置
+        private int stateBOriginX, stateBOriginY;
+        
         // 开关状态：true表示已打开量子虚幻模式，false表示已关闭
         private boolean isActive = false;
         
@@ -355,6 +360,11 @@ public class DerivativeUnitFactory extends UnitFactory {
             
             log("CaptureState - Start: (" + startX + ", " + startY + "), End: (" + endX + ", " + endY + ")");
             
+            // 记录蓝图的基点坐标（区域左上角的世界坐标）
+            stateAOriginX = startX;
+            stateAOriginY = startY;
+            log("CaptureState - Set origin to (" + stateAOriginX + ", " + stateAOriginY + ")");
+            
             // 使用游戏内置方法创建蓝图，这会自动处理所有建筑的捕获
             Schematic schematic = schematics.create(startX, startY, endX, endY);
             
@@ -378,6 +388,11 @@ public class DerivativeUnitFactory extends UnitFactory {
             int endY = startY + REGION_SIZE - 1;
             
             log("CaptureBuildings - Start: (" + startX + ", " + startY + "), End: (" + endX + ", " + endY + ")");
+            
+            // 记录蓝图的基点坐标（区域左上角的世界坐标）
+            stateBOriginX = startX;
+            stateBOriginY = startY;
+            log("CaptureBuildings - Set origin to (" + stateBOriginX + ", " + stateBOriginY + ")");
             
             // 使用游戏内置方法创建蓝图
             Schematic schematic = schematics.create(startX, startY, endX, endY);
@@ -426,12 +441,11 @@ public class DerivativeUnitFactory extends UnitFactory {
                             // 确定要放置的方块
                             Block block;
                             if (i == 0 || i == REGION_SIZE - 1 || j == 0 || j == REGION_SIZE - 1) {
-                                // 边框：使用允许放置建筑的墙
+                                // 边框：使用暗金属墙作为围栏
                                 block = Blocks.darkMetal;
                             } else {
-                                // 中间：使用允许放置建筑的地板
-                                // 使用metalFloor，确保允许放置建筑
-                                block = Blocks.metalFloor;
+                                // 中间：使用暗面板3作为地板
+                                block = Blocks.darkPanel3;
                             }
                             
                             // 放置方块
@@ -447,17 +461,30 @@ public class DerivativeUnitFactory extends UnitFactory {
         private void placeSchematic(Schematic schematic) {
             log("=== PLACE SCHEMATIC ===");
             
-            int startX = getRegionStartX();
-            int startY = getRegionStartY();
+            // 确定使用哪个基点坐标
+            int originX, originY;
+            if (schematic == mapStateA) {
+                // 使用蓝图A的基点坐标
+                originX = stateAOriginX;
+                originY = stateAOriginY;
+            } else if (schematic == mapStateB) {
+                // 使用蓝图B的基点坐标
+                originX = stateBOriginX;
+                originY = stateBOriginY;
+            } else {
+                // 默认使用当前区域的起始坐标
+                originX = getRegionStartX();
+                originY = getRegionStartY();
+            }
             
-            log("PlaceSchematic - Start: (" + startX + ", " + startY + ")");
+            log("PlaceSchematic - Using origin: (" + originX + ", " + originY + ")");
             log("PlaceSchematic - Blueprint tiles count: " + schematic.tiles.size);
             
-            // 直接遍历蓝图中的每个瓦片，保持原始相对位置
+            // 直接遍历蓝图中的每个瓦片，使用正确的世界坐标
             for (Schematic.Stile stile : schematic.tiles) {
-                // 计算世界坐标：起始位置 + 瓦片在蓝图中的相对位置
-                int worldX = startX + stile.x;
-                int worldY = startY + stile.y;
+                // 计算世界坐标：基点坐标 + 瓦片在蓝图中的相对位置
+                int worldX = originX + stile.x;
+                int worldY = originY + stile.y;
                 
                 Tile tile = world.tile(worldX, worldY);
                 if (tile != null) {
@@ -481,6 +508,7 @@ public class DerivativeUnitFactory extends UnitFactory {
                     
                     log("PlaceSchematic - Placed: " + stile.block.name + 
                         " at " + worldX + "," + worldY + 
+                        " (origin: " + originX + "," + originY + ", offset: " + stile.x + "," + stile.y + ")" +
                         " Rotation: " + stile.rotation);
                 }
             }
