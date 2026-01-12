@@ -303,7 +303,10 @@ public class DerivativeUnitFactory extends UnitFactory {
             // 1. 保存当前建筑到变量b
             mapStateB = captureRegionBuildings();
             
-            // 2. 还原变量a的状态
+            // 2. 先彻底清除当前区域的内容
+            clearRegion();
+            
+            // 3. 还原变量a的状态
             if (mapStateA != null) {
                 log("Close - Restoring state A, block count: " + mapStateA.tiles.size);
                 placeSchematic(mapStateA);
@@ -312,6 +315,33 @@ public class DerivativeUnitFactory extends UnitFactory {
             }
             
             log("=== CLOSE COMPLETE ===");
+        }
+        
+        // 彻底清除14*14区域内的所有内容
+        private void clearRegion() {
+            log("=== CLEAR REGION ===");
+            
+            int startX = getRegionStartX();
+            int startY = getRegionStartY();
+            
+            log("ClearRegion - Start: (" + startX + ", " + startY + "), Size: " + REGION_SIZE + "x" + REGION_SIZE);
+            
+            // 遍历区域内所有瓦片，清除现有内容
+            for (int i = 0; i < REGION_SIZE; i++) {
+                for (int j = 0; j < REGION_SIZE; j++) {
+                    int worldX = startX + i;
+                    int worldY = startY + j;
+                    
+                    if (worldX >= 0 && worldX < world.width() && worldY >= 0 && worldY < world.height()) {
+                        Tile tile = world.tile(worldX, worldY);
+                        if (tile != null) {
+                            // 清除现有内容
+                            tile.remove();
+                            log("ClearRegion - Cleared tile at (" + worldX + ", " + worldY + ")");
+                        }
+                    }
+                }
+            }
         }
         
         // 使用游戏蓝图系统捕获区域完整状态
@@ -329,6 +359,12 @@ public class DerivativeUnitFactory extends UnitFactory {
             Schematic schematic = schematics.create(startX, startY, endX, endY);
             
             log("CaptureState - Total blocks saved: " + schematic.tiles.size);
+            
+            // 记录蓝图中每个瓦片的原始坐标，用于调试
+            for (Schematic.Stile stile : schematic.tiles) {
+                log("CaptureState - Tile in blueprint: " + stile.block.name + " at (" + stile.x + ", " + stile.y + ")");
+            }
+            
             return schematic;
         }
         
@@ -390,11 +426,12 @@ public class DerivativeUnitFactory extends UnitFactory {
                             // 确定要放置的方块
                             Block block;
                             if (i == 0 || i == REGION_SIZE - 1 || j == 0 || j == REGION_SIZE - 1) {
-                                // 边框：暗金属墙
+                                // 边框：使用允许放置建筑的墙
                                 block = Blocks.darkMetal;
                             } else {
-                                // 中间：暗面板3
-                                block = Blocks.darkPanel3;
+                                // 中间：使用允许放置建筑的面板
+                                // 使用普通地板代替暗面板3，确保允许放置建筑
+                                block = Blocks.plasticFloor;
                             }
                             
                             // 放置方块
@@ -414,19 +451,19 @@ public class DerivativeUnitFactory extends UnitFactory {
             int startY = getRegionStartY();
             
             log("PlaceSchematic - Start: (" + startX + ", " + startY + ")");
+            log("PlaceSchematic - Blueprint tiles count: " + schematic.tiles.size);
             
-            // 将蓝图转换为构建计划
-            Seq<BuildPlan> plans = schematics.toPlans(schematic, startX, startY, false);
-            
-            log("PlaceSchematic - Generated " + plans.size + " build plans");
-            
-            // 遍历所有构建计划
-            for (BuildPlan plan : plans) {
-                Tile tile = world.tile(plan.x, plan.y);
+            // 直接遍历蓝图中的每个瓦片，保持原始相对位置
+            for (Schematic.Stile stile : schematic.tiles) {
+                // 计算世界坐标：起始位置 + 瓦片在蓝图中的相对位置
+                int worldX = startX + stile.x;
+                int worldY = startY + stile.y;
+                
+                Tile tile = world.tile(worldX, worldY);
                 if (tile != null) {
                     // 清除目标位置的现有建筑
                     Seq<Tile> linked = new Seq<>();
-                    tile.getLinkedTilesAs(plan.block, linked);
+                    tile.getLinkedTilesAs(stile.block, linked);
                     
                     for (Tile t : linked) {
                         if (t.block() != Blocks.air) {
@@ -435,16 +472,16 @@ public class DerivativeUnitFactory extends UnitFactory {
                     }
                     
                     // 放置新建筑
-                    tile.setBlock(plan.block, team, plan.rotation);
+                    tile.setBlock(stile.block, team, stile.rotation);
                     
                     // 应用配置
-                    if (plan.config != null && tile.build != null) {
-                        tile.build.configureAny(plan.config);
+                    if (stile.config != null && tile.build != null) {
+                        tile.build.configureAny(stile.config);
                     }
                     
-                    log("PlaceSchematic - Placed: " + plan.block.name + 
-                        " at " + plan.x + "," + plan.y + 
-                        " Rotation: " + plan.rotation);
+                    log("PlaceSchematic - Placed: " + stile.block.name + 
+                        " at " + worldX + "," + worldY + 
+                        " Rotation: " + stile.rotation);
                 }
             }
         }
