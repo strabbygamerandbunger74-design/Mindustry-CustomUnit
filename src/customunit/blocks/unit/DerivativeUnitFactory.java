@@ -312,22 +312,29 @@ public class DerivativeUnitFactory extends UnitFactory {
                     if (worldX >= 0 && worldX < world.width() && worldY >= 0 && worldY < world.height()) {
                         Tile tile = world.tile(worldX, worldY);
                         if (tile != null) {
+                            // 计算相对于区域左上角的本地坐标
+                            int localX = i;
+                            int localY = j;
+                            
+                            // 1. 先保存地板
+                            Floor floorType = tile.floor();
+                            if (floorType != null && floorType != Blocks.air.asFloor()) {
+                                tiles.add(new Schematic.Stile(floorType, localX, localY, null, (byte)0));
+                            }
+                            
+                            // 2. 保存墙体
                             Block block = tile.block();
-                            if (block != Blocks.air) {
-                                // 计算相对于区域左上角的本地坐标
-                                int localX = i;
-                                int localY = j;
+                            if (block instanceof StaticWall && block != Blocks.air) {
                                 Object config = tile.build != null ? tile.build.config() : null;
                                 byte rotation = tile.build != null ? (byte)tile.build.rotation : 0;
                                 tiles.add(new Schematic.Stile(block, localX, localY, config, rotation));
                             }
-                            // 保存地板
-                            Floor floorType = tile.floor();
-                            if (floorType != Blocks.air.asFloor()) {
-                                // 计算相对于区域左上角的本地坐标
-                                int localX = i;
-                                int localY = j;
-                                tiles.add(new Schematic.Stile(floorType.asFloor(), localX, localY, null, (byte)0));
+                            
+                            // 3. 保存其他建筑
+                            else if (block != null && block != Blocks.air && !(block instanceof Floor)) {
+                                Object config = tile.build != null ? tile.build.config() : null;
+                                byte rotation = tile.build != null ? (byte)tile.build.rotation : 0;
+                                tiles.add(new Schematic.Stile(block, localX, localY, config, rotation));
                             }
                         }
                     }
@@ -389,23 +396,16 @@ public class DerivativeUnitFactory extends UnitFactory {
                     if (worldX >= 0 && worldX < world.width() && worldY >= 0 && worldY < world.height()) {
                         Tile tile = world.tile(worldX, worldY);
                         if (tile != null) {
-                            // 清除瓦片内容（使用内置方法避免空指针）
+                            // 清除瓦片内容
                             // 1. 清除建筑（如果有）
                             if (tile.build != null) {
                                 tile.remove();
                             }
                             
-                            // 2. 清除墙体（如果有）
-                            if (tile.block() instanceof StaticWall) {
-                                tile.setAir();
-                            }
-                            
-                            // 3. 清除其他非地板方块（如果有）
+                            // 2. 清除所有非地板方块（保留地板）
                             if (tile.block() != null && !(tile.block() instanceof Floor)) {
                                 tile.setAir();
                             }
-                            
-                            // 4. 地板保持原始状态，不清除
                         }
                     }
                 }
@@ -480,27 +480,49 @@ public class DerivativeUnitFactory extends UnitFactory {
             int startX = getRegionStartX();
             int startY = getRegionStartY();
             
-            // 遍历Schematic中的所有瓦片
+            // 1. 先将所有瓦片重置为空气，清除所有内容
+            for (int i = 0; i < REGION_SIZE; i++) {
+                for (int j = 0; j < REGION_SIZE; j++) {
+                    int worldX = startX + i;
+                    int worldY = startY + j;
+                    if (worldX >= 0 && worldX < world.width() && worldY >= 0 && worldY < world.height()) {
+                        Tile tile = world.tile(worldX, worldY);
+                        if (tile != null) {
+                            // 清除所有建筑和墙体
+                            if (tile.build != null) {
+                                tile.remove();
+                            }
+                            tile.setBlock(Blocks.air);
+                        }
+                    }
+                }
+            }
+            
+            // 2. 处理所有地板
             for (Schematic.Stile stile : mapStateA.tiles) {
-                // 计算实际世界坐标
-                int worldX = startX + stile.x;
-                int worldY = startY + stile.y;
-                
-                // 获取对应位置的Tile对象
-                Tile tile = world.tile(worldX, worldY);
-                if (tile != null) {
-                    // 清除当前位置的建筑和墙
-                    if (tile.build != null) {
-                        tile.remove();
-                    }
-                    if (tile.block() != Blocks.air) {
-                        tile.setAir();
-                    }
+                if (stile.block instanceof Floor) {
+                    // 计算实际世界坐标
+                    int worldX = startX + stile.x;
+                    int worldY = startY + stile.y;
                     
-                    // 如果是地板，直接设置
-                    if (stile.block instanceof Floor) {
+                    // 获取对应位置的Tile对象
+                    Tile tile = world.tile(worldX, worldY);
+                    if (tile != null) {
                         tile.setFloor((Floor)stile.block);
-                    } else {
+                    }
+                }
+            }
+            
+            // 3. 处理所有墙体和建筑
+            for (Schematic.Stile stile : mapStateA.tiles) {
+                if (!(stile.block instanceof Floor)) {
+                    // 计算实际世界坐标
+                    int worldX = startX + stile.x;
+                    int worldY = startY + stile.y;
+                    
+                    // 获取对应位置的Tile对象
+                    Tile tile = world.tile(worldX, worldY);
+                    if (tile != null) {
                         // 设置新的建筑或墙
                         tile.setBlock(stile.block, team, stile.rotation);
                         
@@ -527,8 +549,8 @@ public class DerivativeUnitFactory extends UnitFactory {
             // 虚线框偏移：tilesize * (areaSize + size)/2f
             // 背方偏移：与虚线框相反方向，所以使用负的方向向量
             float len = tilesize * (areaSize + size)/2f;
-            int offsetX = (int) (-Geometry.d4x(dir) * len / tilesize);
-            int offsetY = (int) (-Geometry.d4y(dir) * len / tilesize);
+            int offsetX = Math.round(-Geometry.d4x(dir) * len / tilesize);
+            int offsetY = Math.round(-Geometry.d4y(dir) * len / tilesize);
             
             // 计算14*14区域的起始坐标，确保区域在建筑背方
             int startX = tileX + offsetX - REGION_SIZE / 2;
@@ -548,8 +570,8 @@ public class DerivativeUnitFactory extends UnitFactory {
             
             // 计算背方的偏移量
             float len = tilesize * (areaSize + size)/2f;
-            int offsetX = (int) (-Geometry.d4x(dir) * len / tilesize);
-            int offsetY = (int) (-Geometry.d4y(dir) * len / tilesize);
+            int offsetX = Math.round(-Geometry.d4x(dir) * len / tilesize);
+            int offsetY = Math.round(-Geometry.d4y(dir) * len / tilesize);
             
             // 计算14*14区域的起始坐标
             int startX = tileX + offsetX - REGION_SIZE / 2;
