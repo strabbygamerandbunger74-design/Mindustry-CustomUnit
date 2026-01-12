@@ -326,6 +326,9 @@ public class DerivativeUnitFactory extends UnitFactory {
             // 创建Schematic的tiles列表
             Seq<Schematic.Stile> tiles = new Seq<>();
             
+            // 用于避免重复保存同一个建筑
+            Seq<Tile> processed = new Seq<>();
+            
             // 遍历区域内所有瓦片，保存完整状态
             for (int i = 0; i < REGION_SIZE; i++) {
                 for (int j = 0; j < REGION_SIZE; j++) {
@@ -337,8 +340,8 @@ public class DerivativeUnitFactory extends UnitFactory {
                         if (tile != null) {
                             Block block = tile.block();
                             
-                            // 只保存非空气方块
-                            if (block != Blocks.air) {
+                            // 只保存非空气方块且未处理过的
+                            if (block != Blocks.air && !processed.contains(tile)) {
                                 // 计算相对于区域左上角的本地坐标
                                 int localX = i;
                                 int localY = j;
@@ -352,7 +355,13 @@ public class DerivativeUnitFactory extends UnitFactory {
                                 
                                 log("CaptureState - Saved: " + block.name + 
                                     " at " + localX + "," + localY + 
-                                    " (world: " + worldX + "," + worldY + ")");
+                                    " (world: " + worldX + "," + worldY + ")" +
+                                    " Size: " + block.size);
+                                
+                                // 标记该建筑的所有瓦片为已处理
+                                Seq<Tile> linked = new Seq<>();
+                                tile.getLinkedTilesAs(block, linked);
+                                processed.addAll(linked);
                             }
                         }
                     }
@@ -375,6 +384,9 @@ public class DerivativeUnitFactory extends UnitFactory {
             // 创建Schematic的tiles列表
             Seq<Schematic.Stile> tiles = new Seq<>();
             
+            // 用于避免重复保存同一个建筑
+            Seq<Tile> processed = new Seq<>();
+            
             // 遍历区域内所有瓦片，只保存有build的建筑
             for (int i = 0; i < REGION_SIZE; i++) {
                 for (int j = 0; j < REGION_SIZE; j++) {
@@ -383,7 +395,7 @@ public class DerivativeUnitFactory extends UnitFactory {
                     
                     if (worldX >= 0 && worldX < world.width() && worldY >= 0 && worldY < world.height()) {
                         Tile tile = world.tile(worldX, worldY);
-                        if (tile != null && tile.build != null) {
+                        if (tile != null && tile.build != null && !processed.contains(tile)) {
                             Block block = tile.block();
                             
                             // 计算相对于区域左上角的本地坐标
@@ -399,7 +411,13 @@ public class DerivativeUnitFactory extends UnitFactory {
                             
                             log("CaptureBuildings - Saved: " + block.name + 
                                 " at " + localX + "," + localY + 
-                                " (world: " + worldX + "," + worldY + ")");
+                                " (world: " + worldX + "," + worldY + ")" +
+                                " Size: " + block.size);
+                            
+                            // 标记该建筑的所有瓦片为已处理
+                            Seq<Tile> linked = new Seq<>();
+                            tile.getLinkedTilesAs(block, linked);
+                            processed.addAll(linked);
                         }
                     }
                 }
